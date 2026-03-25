@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Stock Predictor - Intelligent Stock Price Predictions</title>
+    <meta name="description" content="AI-powered stock prediction with advanced news analysis and algorithm optimization. Get weekly predictions for your favorite stocks.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #1a1a1a;
+            line-height: 1.6;
+            background: #ffffff;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 600;
+            color: #007bff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #666;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #007bff;
+        }
+
+        .cta-button {
+            padding: 12px 28px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            background: #0056b3;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 100px 60px;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .hero p {
+            font-size: 20px;
+            margin-bottom: 40px;
+            opacity: 0.95;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-button {
+            padding: 16px 40px;
+            border: 2px solid white;
+            background: transparent;
+            color: white;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .hero-button:hover {
+            background: white;
+            color: #007bff;
+        }
+
+        .hero-button.primary {
+            background: white;
+            color: #007bff;
+        }
+
+        .hero-button.primary:hover {
+            background: #f0f0f0;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 100px 60px;
+            background: #f8f9fa;
+        }
+
+        .features h2 {
+            font-size: 42px;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 22px;
+            margin-bottom: 15px;
+            color: #1a1a1a;
+        }
+
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 100px 60px;
+            background: white;
+        }
+
+        .how-it-works h2 {
+            font-size: 42px;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .timeline {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .timeline-item {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            border-left: 4px solid #007bff;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: attr(data-step);
+            position: absolute;
+            top: -40px;
+            left: 20px;
+            background: #007bff;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+        }
+
+        .timeline-item h3 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+
+        /* Stats Section */
+        .stats {
+            padding: 100px 60px;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+        }
+
+        .stats h2 {
+            font-size: 42px;
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .stat-item p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 100px 60px;
+            background: #f8f9fa;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: 42px;
+            margin-bottom: 20px;
+        }
+
+        .cta-section p {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 60px;
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+        }
+
+        footer p {
+            margin-bottom: 10px;
+        }
+
+        footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .hero {
+                padding: 60px 20px;
+            }
+
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero p {
+                font-size: 18px;
+            }
+
+            .features, .how-it-works, .stats, .cta-section {
+                padding: 60px 20px;
+            }
+
+            .features h2, .how-it-works h2, .stats h2, .cta-section h2 {
+                font-size: 32px;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .hero-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">📈 AI Stock Predictor</div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#how">How It Works</a>
+            <a href="#about">About</a>
+            <a href="/app" class="cta-button">Launch App</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Intelligent Stock Predictions Powered by AI</h1>
+        <p>Advanced news analysis and machine learning to predict weekly stock price movements. Get accurate predictions for your favorite tickers every Monday.</p>
+        <div class="hero-buttons">
+            <a href="/app" class="hero-button primary">Get Started</a>
+            <a href="#features" class="hero-button">Learn More</a>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <h2>Why Choose AI Stock Predictor?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Weekly Predictions</h3>
+                <p>Get intelligent price predictions every Monday for Wednesday and Friday market closes. Locked predictions ensure integrity and accountability.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📰</div>
+                <h3>News Analysis</h3>
+                <p>Automatic daily news scraping with sentiment analysis. See how media coverage influences stock movements with our intelligent algorithm.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚙️</div>
+                <h3>Custom Algorithm</h3>
+                <p>5-factor prediction model analyzing sentiment, volume, volatility, news frequency, and analyst ratings. Adjust weights to match your strategy.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Track Performance</h3>
+                <p>Real-time accuracy tracking. See how your predictions perform and optimize your algorithm based on actual market results.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💡</div>
+                <h3>Learn & Adapt</h3>
+                <p>Mark news articles as helpful or unhelpful to train the algorithm. Watch weight adjustments improve prediction accuracy weekly.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📈</div>
+                <h3>Data Visualization</h3>
+                <p>Beautiful dashboards showing predictions, accuracy rates, algorithm weights, and historical trends for comprehensive analysis.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works" id="how">
+        <h2>How It Works</h2>
+        <div class="timeline">
+            <div class="timeline-item" data-step="1">
+                <h3>Monday Morning</h3>
+                <p>Algorithm analyzes the past week's news and market data to generate predictions for Wednesday and Friday closes.</p>
+            </div>
+            <div class="timeline-item" data-step="2">
+                <h3>Daily Updates</h3>
+                <p>System scrapes financial news daily, analyzes sentiment, and stores relevant information for the algorithm.</p>
+            </div>
+            <div class="timeline-item" data-step="3">
+                <h3>Wed & Fri Checks</h3>
+                <p>After market close, actual prices are compared against predictions to validate accuracy and update performance metrics.</p>
+            </div>
+            <div class="timeline-item" data-step="4">
+                <h3>Learn & Improve</h3>
+                <p>Based on accuracy results, algorithm weights are adjusted for the following week to improve predictions continuously.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <h2>By The Numbers</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <h3>5</h3>
+                <p>Factor Analysis Model</p>
+            </div>
+            <div class="stat-item">
+                <h3>∞</h3>
+                <p>Tickers Supported</p>
+            </div>
+            <div class="stat-item">
+                <h3>Daily</h3>
+                <p>News Updates</p>
+            </div>
+            <div class="stat-item">
+                <h3>Real-Time</h3>
+                <p>Accuracy Tracking</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section" id="about">
+        <h2>Ready to Get Started?</h2>
+        <p>Launch the AI Stock Predictor dashboard and start making data-driven stock predictions today. Get your first predictions in under 5 minutes.</p>
+        <a href="/app" class="cta-button">Launch Dashboard</a>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 AI Stock Predictor. All rights reserved.</p>
+        <p>Built with React, Node.js, and Machine Learning | <a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a></p>
+    </footer>
+</body>
+</html>

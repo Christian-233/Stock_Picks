@@ -1,0 +1,283 @@
+.predictions-tab {
+  padding: 20px;
+}
+
+.ticker-controls {
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.ticker-input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.ticker-input-group input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.ticker-input-group button {
+  padding: 10px 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.ticker-input-group button:hover {
+  background: #0056b3;
+}
+
+.selected-tickers {
+  margin-bottom: 15px;
+}
+
+.selected-tickers h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.ticker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ticker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #007bff;
+  color: white;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.ticker-badge button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  line-height: 1;
+}
+
+.ticker-badge button:hover {
+  opacity: 0.7;
+}
+
+.generate-btn {
+  width: 100%;
+  padding: 12px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.generate-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.generate-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 18px;
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  color: #999;
+}
+
+.predictions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.prediction-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+}
+
+.card-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.accuracy-badge {
+  background: #ffc107;
+  color: black;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.prediction-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.prediction-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.target-day {
+  display: flex;
+  flex-direction: column;
+}
+
+.target-day strong {
+  color: #333;
+  font-size: 14px;
+}
+
+.date {
+  color: #666;
+  font-size: 12px;
+}
+
+.price-forecast {
+  background: #f9f9f9;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.predicted-price {
+  font-size: 20px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.confidence {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.prediction-footer {
+  text-align: right;
+  color: #999;
+  font-size: 12px;
+}
+
+/* Price Range Styles */
+.price-range-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 4px;
+}
+
+.price-range-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border-radius: 3px;
+  text-align: center;
+  position: relative;
+}
+
+.price-range-item.low {
+  background: #ffe6e6;
+  border: 1px solid #ffcccc;
+}
+
+.price-range-item.mid {
+  background: #e6f3ff;
+  border: 1px solid #cce5ff;
+}
+
+.price-range-item.high {
+  background: #e6ffe6;
+  border: 1px solid #ccffcc;
+}
+
+.price-range-item .label {
+  font-size: 11px;
+  color: #666;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.price-range-item .price {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.price-range-item.low .price {
+  color: #d32f2f;
+}
+
+.price-range-item.mid .price {
+  color: #007bff;
+}
+
+.price-range-item.high .price {
+  color: #388e3c;
+}
+
+.price-range-item .confidence-badge {
+  margin-top: 6px;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Responsive: Stack on mobile */
+@media (max-width: 768px) {
+  .price-range-container {
+    grid-template-columns: 1fr;
+  }
+}

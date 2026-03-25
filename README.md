@@ -11,8 +11,10 @@
 - **Accuracy Tracking**: Real-time validation against actual market prices
 
 ### 📰 News Analysis Engine
-- **Daily Scraping**: Automatically pulls financial news every day
-- **Sentiment Analysis**: Classifies articles as positive/negative/neutral
+- **Daily Scraping**: Automatically pulls financial news from NewsAPI every day
+- **Reddit Integration**: Scrapes discussions from r/stocks, r/investing, r/wallstreetbets
+- **Sentiment Analysis**: Classifies articles and posts as positive/negative/neutral
+- **Community Insights**: Leverage crowd sentiment from Reddit discussions
 - **Relevance Sorting**: Ranks news by recency and relevance
 - **User Feedback**: Mark articles helpful/unhelpful to train algorithm
 
@@ -27,6 +29,12 @@
 - **Weekly Adjustments**: Algorithm learns and improves over time
 - **Trend Analysis**: See which factors drive predictions
 - **Data Export**: All data stored in SQLite for further analysis
+
+### 🎨 Google Stitch Landing Page
+- **Professional Design**: Beautiful marketing landing page built in Google Stitch
+- **Responsive Layout**: Works perfectly on desktop, tablet, and mobile
+- **Seamless Navigation**: Landing page → React app dashboard
+- **Brand Consistency**: Matching colors, fonts, and design system
 
 ## 🚀 Quick Start
 
@@ -257,7 +265,8 @@ Private Project. All rights reserved.
 ## 🙋 Support
 
 For setup help, see `QUICKSTART.md`  
-For detailed docs, see `docs/README.md`
+For detailed docs, see `docs/README.md`  
+For Google Stitch integration, see `STITCH_SETUP_GUIDE.md`  
 
 ---
 
