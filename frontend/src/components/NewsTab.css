@@ -9,6 +9,40 @@
   margin-bottom: 20px;
 }
 
+.ticker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ticker-info h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.ticker-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ticker-badge-news {
+  background: #007bff;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.ticker-count {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+}
+
 .ticker-selector {
   display: flex;
   align-items: center;
@@ -114,6 +148,21 @@
   font-size: 12px;
   color: #666;
   margin-bottom: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ticker-tag {
+  background: #007bff;
+  color: white;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.source {
 }
 
 .source, .date {

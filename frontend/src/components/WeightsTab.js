@@ -1,18 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../api';
+import { SearchableTickerInput } from './SearchableTickerInput';
 import './WeightsTab.css';
 
 export function WeightsTab() {
   const [weightsHistory, setWeightsHistory] = useState([]);
   const [selectedTicker, setSelectedTicker] = useState('');
   const [loading, setLoading] = useState(false);
-  const [tickers] = useState(['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA']);
 
-  useEffect(() => {
-    fetchWeightsHistory();
-  }, [selectedTicker]);
-
-  const fetchWeightsHistory = async () => {
+  const fetchWeightsHistory = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiClient.getWeightsHistory(selectedTicker || null);
@@ -22,7 +18,11 @@ export function WeightsTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTicker]);
+
+  useEffect(() => {
+    fetchWeightsHistory();
+  }, [fetchWeightsHistory]);
 
   const parseWeights = (row) => {
     return {
@@ -58,15 +58,18 @@ export function WeightsTab() {
       <div className="weights-controls">
         <div className="ticker-selector">
           <label>Filter by Ticker (Optional):</label>
-          <select 
-            value={selectedTicker}
-            onChange={(e) => setSelectedTicker(e.target.value)}
-          >
-            <option value="">All Tickers</option>
-            {tickers.map(ticker => (
-              <option key={ticker} value={ticker}>{ticker}</option>
-            ))}
-          </select>
+          <SearchableTickerInput 
+            onSelectTicker={(ticker) => setSelectedTicker(ticker)}
+            placeholder="Search stocks by name or ticker..."
+          />
+          {selectedTicker && (
+            <button 
+              className="clear-ticker-btn"
+              onClick={() => setSelectedTicker('')}
+            >
+              Clear filter
+            </button>
+          )}
         </div>
       </div>
 

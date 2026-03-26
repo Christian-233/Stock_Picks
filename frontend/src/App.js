@@ -3,6 +3,7 @@ import { PredictionsTab } from './components/PredictionsTab';
 import { NewsTab } from './components/NewsTab';
 import { AlgorithmTab } from './components/AlgorithmTab';
 import { WeightsTab } from './components/WeightsTab';
+import stonkImage from './assets/stonk.jpeg';
 import './App.css';
 
 function App() {
@@ -10,7 +11,15 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
+      <header 
+        className="app-header"
+        style={{
+          backgroundImage: `linear-gradient(135deg, rgba(0, 123, 255, 0.7) 0%, rgba(0, 86, 179, 0.7) 100%), url(${stonkImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
+        }}
+      >
         <div className="header-content">
           <div className="logo">
             <div className="logo-with-back">

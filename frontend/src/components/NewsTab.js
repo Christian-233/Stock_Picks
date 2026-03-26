@@ -3,24 +3,53 @@ import { apiClient } from '../api';
 import './NewsTab.css';
 
 export function NewsTab() {
-  const [selectedTicker, setSelectedTicker] = useState('AAPL');
+  const [tickers, setTickers] = useState(() => {
+    const saved = localStorage.getItem('selectedTickers');
+    return saved ? JSON.parse(saved) : ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'];
+  });
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [tickers] = useState(['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA']);
 
+  // Watch for changes to selected tickers in localStorage
   useEffect(() => {
-    fetchNews(selectedTicker);
-  }, [selectedTicker]);
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('selectedTickers');
+      if (saved) {
+        setTickers(JSON.parse(saved));
+      }
+    };
 
-  const fetchNews = async (ticker) => {
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Fetch news for all selected tickers whenever tickers change
+  useEffect(() => {
+    if (tickers.length > 0) {
+      fetchAllNews(tickers);
+    }
+  }, [tickers]);
+
+  const fetchAllNews = async (selectedTickers) => {
     try {
       setLoading(true);
-      const data = await apiClient.getNews(ticker, 50);
-      // Sort by published date and filter helpful indicators
-      const sortedNews = Array.isArray(data) ? data.sort((a, b) => {
-        return (b.published_at || 0) - (a.published_at || 0);
-      }) : [];
-      setNews(sortedNews);
+      // Fetch news for each ticker
+      const newsPromises = selectedTickers.map(ticker =>
+        apiClient.getNews(ticker, 30).catch(err => {
+          console.error(`Error fetching news for ${ticker}:`, err);
+          return [];
+        })
+      );
+      
+      const allNewsArrays = await Promise.all(newsPromises);
+      
+      // Flatten and sort by published date
+      const combinedNews = allNewsArrays
+        .flat()
+        .sort((a, b) => (b.published_at || 0) - (a.published_at || 0))
+        .slice(0, 100); // Keep top 100 most recent
+      
+      setNews(combinedNews);
     } catch (error) {
       console.error('Error fetching news:', error);
     } finally {
@@ -31,8 +60,8 @@ export function NewsTab() {
   const toggleHelpful = async (newsId, currentState) => {
     try {
       await apiClient.updateNewsHelpful(newsId, !currentState);
-      // Refresh news
-      await fetchNews(selectedTicker);
+      // Refresh news for all selected tickers
+      await fetchAllNews(tickers);
     } catch (error) {
       console.error('Error updating news helpfulness:', error);
     }
@@ -75,16 +104,14 @@ export function NewsTab() {
       <h2>News & Analysis</h2>
 
       <div className="news-controls">
-        <div className="ticker-selector">
-          <label>Select Ticker:</label>
-          <select 
-            value={selectedTicker}
-            onChange={(e) => setSelectedTicker(e.target.value)}
-          >
+        <div className="ticker-info">
+          <h3>📊 Showing News For:</h3>
+          <div className="ticker-badges">
             {tickers.map(ticker => (
-              <option key={ticker} value={ticker}>{ticker}</option>
+              <span key={ticker} className="ticker-badge-news">{ticker}</span>
             ))}
-          </select>
+          </div>
+          <p className="ticker-count">Displaying {news.length} articles total</p>
         </div>
       </div>
 
@@ -113,6 +140,7 @@ export function NewsTab() {
                 </h4>
 
                 <div className="news-meta">
+                  <span className="ticker-tag">{article.ticker}</span>
                   <span className="source">📰 {article.source}</span>
                   <span className="date">🕐 {formatDate(article.published_at)}</span>
                 </div>

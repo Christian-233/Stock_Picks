@@ -20,15 +20,21 @@ body {
 }
 
 .app-header {
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
   color: white;
   padding: 40px 20px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.app-header::before {
+  content: none;
 }
 
 .header-content {
   max-width: 1400px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .logo {

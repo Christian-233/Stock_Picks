@@ -68,13 +68,19 @@ async function predictStockPrice(ticker, targetDate) {
     const currentPrice = await stockData.getStockPrice(ticker);
     if (!currentPrice) throw new Error(`Could not get price for ${ticker}`);
 
-    // Get market factors
+    // Get market factors - now using 1-year historical data
     const sentiment = await analyzeSentiment(ticker);
     const newsFrequency = await analyzeNewsFrequency(ticker);
-    const volatility = (await stockData.getStockVolatility(ticker))?.volatility || 0.15;
     
-    // Mock analyst rating (would be fetched from API)
-    const analystRating = 0.6 + Math.random() * 0.3;
+    // Calculate volatility from 1 year of historical data
+    const volatility = await stockData.calculateVolatilityFromHistory(ticker, 365);
+    
+    // Calculate trend from 1 year of historical data
+    const trend = await stockData.calculateTrendFromHistory(ticker, 365);
+    
+    // Adjusted analyst rating based on recent trend
+    const baseAnalystRating = 0.6 + Math.random() * 0.3;
+    const trendAdjustedRating = Math.max(Math.min(baseAnalystRating + (trend * 0.2), 1), 0);
     
     // Mock trading volume ratio
     const volumeRatio = 0.8 + Math.random() * 0.3;
@@ -91,11 +97,17 @@ async function predictStockPrice(ticker, targetDate) {
       (volumeRatio * weights.volume) +
       ((1 - volatility) * weights.volatility) +
       (newsFrequency * weights.newsFrequency) +
-      (analystRating * weights.analystRating);
+      (trendAdjustedRating * weights.analystRating);
 
-    // Calculate predicted price based on score and days until target
+    // Calculate predicted price based on score, trend, and days until target
     const daysUntilTarget = Math.ceil((targetDate * 1000 - Date.now()) / (24 * 60 * 60 * 1000));
-    const expectedReturn = (-0.05 + (score * 0.15)); // -5% to +10% expected return
+    
+    // Expected return: base on trend, adjusted by sentiment and analyst rating
+    const trendComponent = trend * 0.10; // Historical trend up to ±10%
+    const sentimentComponent = (sentiment - 0.5) * 0.08; // Sentiment ±8%
+    const scoreComponent = (score - 0.5) * 0.10; // Score ±10%
+    const expectedReturn = trendComponent + sentimentComponent + scoreComponent;
+    
     const midPrice = currentPrice.price * (1 + expectedReturn);
 
     // Generate price range (low, mid, high)
@@ -146,7 +158,7 @@ async function predictStockPrice(ticker, targetDate) {
 
 async function generateMondayPredictions(tickers) {
   try {
-    console.log('Generating Monday predictions...');
+    console.log('Generating Monday predictions for tickers:', tickers);
     
     // Get Wednesday and Friday of this week
     const today = new Date();
@@ -167,13 +179,20 @@ async function generateMondayPredictions(tickers) {
     const wednesdayTimestamp = Math.floor(wednesdayDate.getTime() / 1000);
     const fridayTimestamp = Math.floor(fridayDate.getTime() / 1000);
 
+    console.log(`Wednesday: ${new Date(wednesdayTimestamp * 1000)}, Friday: ${new Date(fridayTimestamp * 1000)}`);
+
     const predictions = [];
 
     for (const ticker of tickers) {
-      const wednesdayPrediction = await predictStockPrice(ticker, wednesdayTimestamp);
-      const fridayPrediction = await predictStockPrice(ticker, fridayTimestamp);
+      try {
+        const wednesdayPrediction = await predictStockPrice(ticker, wednesdayTimestamp);
+        const fridayPrediction = await predictStockPrice(ticker, fridayTimestamp);
 
-      if (wednesdayPrediction && fridayPrediction) {
+        if (!wednesdayPrediction || !fridayPrediction) {
+          console.warn(`Could not generate predictions for ${ticker}`);
+          continue;
+        }
+
         // Get news summary
         const news = await db.all(
           `SELECT title FROM news 
@@ -213,14 +232,21 @@ async function generateMondayPredictions(tickers) {
           ]
         );
 
+        console.log(`✓ Prediction generated for ${ticker}`);
         predictions.push(predictionData);
+      } catch (tickerError) {
+        console.error(`Error generating prediction for ${ticker}:`, tickerError);
       }
+    }
+
+    if (predictions.length === 0) {
+      throw new Error('No predictions could be generated. Check that tickers are valid and news data exists.');
     }
 
     return predictions;
   } catch (error) {
     console.error('Error generating predictions:', error);
-    return [];
+    throw error;
   }
 }
 

@@ -60,10 +60,24 @@ router.post('/predict', async (req, res) => {
       return res.status(400).json({ error: 'Provide array of ticker symbols' });
     }
 
+    console.log(`Generating predictions for tickers: ${tickers.join(', ')}`);
     const predictions = await aiPredictor.generateMondayPredictions(tickers);
+    
+    if (!predictions || predictions.length === 0) {
+      return res.status(500).json({ 
+        error: 'Failed to generate predictions. Check backend logs for details.',
+        success: false 
+      });
+    }
+    
     res.json({ success: true, predictions });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error in /predict endpoint:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to generate predictions',
+      success: false,
+      details: error.toString()
+    });
   }
 });
 
@@ -219,6 +233,23 @@ router.get('/algorithm/details', async (req, res) => {
         analystRating: 'Average analyst rating'
       }
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get suggested stocks
+router.get('/suggested-stocks', async (req, res) => {
+  try {
+    // For now, return popular tech stocks that are frequently discussed
+    // In production, this could analyze Reddit trends, news volume, etc.
+    const suggestedStocks = ['NVDA', 'META', 'NFLX', 'AMD', 'TSLA', 'GOOGL'];
+    
+    // Shuffle and return 3 random ones
+    const shuffled = suggestedStocks.sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 3);
+    
+    res.json({ suggestedStocks: selected });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
