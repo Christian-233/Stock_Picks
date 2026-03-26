@@ -3,6 +3,7 @@ import { PredictionsTab } from './components/PredictionsTab';
 import { NewsTab } from './components/NewsTab';
 import { AlgorithmTab } from './components/AlgorithmTab';
 import { WeightsTab } from './components/WeightsTab';
+import { ApiStatusTab } from './components/ApiStatusTab';
 import stonkImage from './assets/stonk.jpeg';
 import './App.css';
 
@@ -61,6 +62,13 @@ function App() {
             <span className="tab-icon">📊</span>
             Weights History
           </button>
+          <button
+            className={`nav-tab ${activeTab === 'status' ? 'active' : ''}`}
+            onClick={() => setActiveTab('status')}
+          >
+            <span className="tab-icon">🔌</span>
+            API Status
+          </button>
         </div>
       </nav>
 
@@ -69,6 +77,7 @@ function App() {
         {activeTab === 'news' && <NewsTab />}
         {activeTab === 'algorithm' && <AlgorithmTab />}
         {activeTab === 'weights' && <WeightsTab />}
+        {activeTab === 'status' && <ApiStatusTab />}
       </main>
 
       <footer className="app-footer">

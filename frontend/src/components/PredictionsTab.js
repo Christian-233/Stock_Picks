@@ -12,6 +12,7 @@ export function PredictionsTab() {
   const [predictions, setPredictions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [accuracy, setAccuracy] = useState({});
+  const [error, setError] = useState(null);
   const [suggestedStocks, setSuggestedStocks] = useState(['NVDA', 'META', 'NFLX']); // Will be updated from scraping
 
   // Persist tickers to localStorage whenever they change

@@ -238,7 +238,6 @@ router.get('/algorithm/details', async (req, res) => {
   }
 });
 
-// Get suggested stocks
 router.get('/suggested-stocks', async (req, res) => {
   try {
     // For now, return popular tech stocks that are frequently discussed
@@ -253,6 +252,172 @@ router.get('/suggested-stocks', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// Get data source status
+router.get('/data-sources', (req, res) => {
+  try {
+    const status = stockData.getDataSourceStatus();
+    res.json({
+      dataSourceStatus: status,
+      message: 'Data sources available and their status. See DATA_SOURCES_SETUP.md for setup instructions.',
+      setup: {
+        yahooFinance: 'Enabled by default - no setup needed',
+        finnhub: 'Optional - requires API key from https://finnhub.io/register',
+        alphaVantage: 'Optional - requires API key from https://www.alphavantage.co',
+        fallback: 'Mock data used if all sources unavailable'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Health check endpoint - test all data sources and APIs
+router.get('/health-check', async (req, res) => {
+  const results = {
+    timestamp: new Date().toISOString(),
+    status: 'checking',
+    sources: {}
+  };
+
+  // Test Yahoo Finance
+  try {
+    const yahooPrice = await stockData.getYahooFinancePrice('AAPL');
+    if (yahooPrice) {
+      results.sources.yahooFinance = {
+        status: 'working',
+        price: yahooPrice.price,
+        timestamp: new Date().toLocaleString(),
+        message: '✓ Yahoo Finance is working'
+      };
+    } else {
+      results.sources.yahooFinance = {
+        status: 'failed',
+        message: 'Yahoo Finance returned null'
+      };
+    }
+  } catch (error) {
+    results.sources.yahooFinance = {
+      status: 'error',
+      error: error.message,
+      message: '✗ Yahoo Finance error'
+    };
+  }
+
+  // Test Finnhub
+  try {
+    const finnhubPrice = await stockData.getFinnhubPrice('AAPL');
+    if (finnhubPrice) {
+      results.sources.finnhub = {
+        status: 'working',
+        price: finnhubPrice.price,
+        timestamp: new Date().toLocaleString(),
+        message: '✓ Finnhub is working'
+      };
+    } else {
+      results.sources.finnhub = {
+        status: 'nokey',
+        message: '⚠ Finnhub: API key not configured'
+      };
+    }
+  } catch (error) {
+    results.sources.finnhub = {
+      status: 'error',
+      error: error.message,
+      message: '✗ Finnhub error'
+    };
+  }
+
+  // Test Alpha Vantage
+  try {
+    const avPrice = await stockData.getAlphaVantagePrice('AAPL');
+    if (avPrice) {
+      results.sources.alphaVantage = {
+        status: 'working',
+        price: avPrice.price,
+        timestamp: new Date().toLocaleString(),
+        message: '✓ Alpha Vantage is working'
+      };
+    } else {
+      results.sources.alphaVantage = {
+        status: 'nokey',
+        message: '⚠ Alpha Vantage: API key not configured or rate limit reached'
+      };
+    }
+  } catch (error) {
+    results.sources.alphaVantage = {
+      status: 'error',
+      error: error.message,
+      message: '✗ Alpha Vantage error'
+    };
+  }
+
+  // Test News API
+  try {
+    const axios = require('axios');
+    const newsApiKey = process.env.NEWS_API_KEY;
+    
+    if (!newsApiKey) {
+      results.sources.newsAPI = {
+        status: 'nokey',
+        message: '⚠ News API: API key not configured'
+      };
+    } else {
+      const response = await axios.get('https://newsapi.org/v2/everything', {
+        q: 'stock',
+        sortBy: 'publishedAt',
+        language: 'en',
+        pageSize: 1,
+        apiKey: newsApiKey
+      });
+
+      if (response.status === 200) {
+        results.sources.newsAPI = {
+          status: 'working',
+          articlesFound: response.data.totalResults || 0,
+          timestamp: new Date().toLocaleString(),
+          message: `✓ News API is working (${response.data.totalResults || 0} articles available)`
+        };
+      } else {
+        results.sources.newsAPI = {
+          status: 'failed',
+          message: 'News API returned non-200 status'
+        };
+      }
+    }
+  } catch (error) {
+    if (error.response && error.response.status === 401) {
+      results.sources.newsAPI = {
+        status: 'unauthorized',
+        error: 'Invalid API key',
+        message: '✗ News API: Unauthorized (invalid key)'
+      };
+    } else {
+      results.sources.newsAPI = {
+        status: 'error',
+        error: error.message,
+        message: '✗ News API error'
+      };
+    }
+  }
+
+  // Summary
+  const workingCount = Object.values(results.sources).filter(s => s.status === 'working').length;
+  const totalCount = Object.keys(results.sources).length;
+  
+  results.summary = {
+    working: workingCount,
+    total: totalCount,
+    overallStatus: workingCount > 0 ? 'partial' : 'all_failed',
+    message: workingCount === totalCount 
+      ? '✓ All APIs working!' 
+      : workingCount > 0 
+        ? `⚠ ${workingCount}/${totalCount} APIs working`
+        : '✗ No APIs working'
+  };
+
+  res.json(results);
 });
 
 module.exports = router;

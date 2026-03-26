@@ -1,14 +1,16 @@
 const db = require('./database');
 const newsScraper = require('./news-scraper');
 const stockData = require('./stock-data');
+const technicalIndicators = require('./technical-indicators');
 
-// Weights for the algorithm
+// Weights for the algorithm (updated with technical indicators)
 let currentWeights = {
-  sentiment: 0.25,
-  volume: 0.15,
-  volatility: 0.20,
-  newsFrequency: 0.20,
-  analystRating: 0.20
+  sentiment: 0.12,
+  volume: 0.08,
+  volatility: 0.10,
+  newsFrequency: 0.10,
+  analystRating: 0.10,
+  technicalSignals: 0.50  // NEW - Technical indicators get 50% weight
 };
 
 function getWeightsForWeek(weekNumber, year) {
@@ -68,7 +70,13 @@ async function predictStockPrice(ticker, targetDate) {
     const currentPrice = await stockData.getStockPrice(ticker);
     if (!currentPrice) throw new Error(`Could not get price for ${ticker}`);
 
-    // Get market factors - now using 1-year historical data
+    // Get 90 days of historical data for technical analysis
+    const priceHistory = await stockData.getPriceHistory(ticker, 90);
+    
+    // Analyze technical indicators
+    const technicalAnalysis = technicalIndicators.interpretAllSignals(priceHistory);
+    
+    // Get market factors
     const sentiment = await analyzeSentiment(ticker);
     const newsFrequency = await analyzeNewsFrequency(ticker);
     
@@ -91,13 +99,17 @@ async function predictStockPrice(ticker, targetDate) {
       new Date().getFullYear()
     );
 
-    // Calculate weighted score
+    // Technical score normalized to 0-1
+    const technicalScore = Math.min(Math.max(parseFloat(technicalAnalysis.bullishScore) / 100, 0), 1);
+
+    // Calculate weighted score with technical indicators
     const score =
       (sentiment * weights.sentiment) +
       (volumeRatio * weights.volume) +
       ((1 - volatility) * weights.volatility) +
       (newsFrequency * weights.newsFrequency) +
-      (trendAdjustedRating * weights.analystRating);
+      (trendAdjustedRating * weights.analystRating) +
+      (technicalScore * weights.technicalSignals);
 
     // Calculate predicted price based on score, trend, and days until target
     const daysUntilTarget = Math.ceil((targetDate * 1000 - Date.now()) / (24 * 60 * 60 * 1000));
@@ -140,11 +152,13 @@ async function predictStockPrice(ticker, targetDate) {
       priceRange: priceRange,
       predictedPrice: Math.round(midPrice * 100) / 100, // Keep for backward compatibility
       confidence: Math.round(baseConfidence * 100) / 100,
+      technicalSignals: technicalAnalysis,  // NEW - Include technical analysis
       factors: {
         sentiment: Math.round(sentiment * 100),
         newsFrequency: Math.round(newsFrequency * 100),
         volatility: Math.round(volatility * 100),
-        analystRating: Math.round(analystRating * 100),
+        technicalScore: Math.round(technicalScore * 100),  // NEW
+        analystRating: Math.round(trendAdjustedRating * 100),
         volumeRatio: Math.round(volumeRatio * 100)
       },
       weights,
