@@ -25,12 +25,15 @@ export function WeightsTab() {
   }, [fetchWeightsHistory]);
 
   const parseWeights = (row) => {
+    const source = row.algorithm_weights || row;
+
     return {
-      sentiment: row.weight_sentiment,
-      volume: row.weight_volume,
-      volatility: row.weight_volatility,
-      newsFrequency: row.weight_news_frequency,
-      analystRating: row.weight_analyst_rating
+      historicalTrend: Number(source.historicalTrend ?? row.weight_historical_trend ?? row.weight_sentiment ?? 0),
+      technicalSignals: Number(source.technicalSignals ?? row.weight_technical_signals ?? 0),
+      newsSentiment: Number(source.newsSentiment ?? row.weight_news_sentiment ?? 0),
+      redditSentiment: Number(source.redditSentiment ?? row.weight_reddit_sentiment ?? 0),
+      volatilityControl: Number(source.volatilityControl ?? row.weight_volatility ?? 0),
+      calibrationAdjustment: Number(source.calibrationAdjustment ?? row.weight_calibration_adjustment ?? 0)
     };
   };
 
@@ -90,11 +93,12 @@ export function WeightsTab() {
                 <tr>
                   <th>Week / Year</th>
                   <th>Ticker</th>
-                  <th>Sentiment</th>
-                  <th>Volume</th>
-                  <th>Volatility</th>
-                  <th>News Frequency</th>
-                  <th>Analyst Rating</th>
+                  <th>Historical Trend</th>
+                  <th>Technical Signals</th>
+                  <th>News Sentiment</th>
+                  <th>Reddit Sentiment</th>
+                  <th>Volatility Control</th>
+                  <th>Calibration</th>
                   <th>Updated</th>
                 </tr>
               </thead>
@@ -110,25 +114,29 @@ export function WeightsTab() {
                         <span className="year">{row.year}</span>
                       </td>
                       <td>{row.ticker || 'Global'}</td>
-                      <td className={`weight-cell ${getWeightChange(weights.sentiment, prevWeights?.sentiment)}`}>
-                        {(weights.sentiment * 100).toFixed(1)}%
-                        <span className="trend">{getWeightChange(weights.sentiment, prevWeights?.sentiment) === 'up' ? '↑' : getWeightChange(weights.sentiment, prevWeights?.sentiment) === 'down' ? '↓' : '→'}</span>
+                      <td className={`weight-cell ${getWeightChange(weights.historicalTrend, prevWeights?.historicalTrend)}`}>
+                        {(weights.historicalTrend * 100).toFixed(1)}%
+                        <span className="trend">{getWeightChange(weights.historicalTrend, prevWeights?.historicalTrend) === 'up' ? '↑' : getWeightChange(weights.historicalTrend, prevWeights?.historicalTrend) === 'down' ? '↓' : '→'}</span>
                       </td>
-                      <td className={`weight-cell ${getWeightChange(weights.volume, prevWeights?.volume)}`}>
-                        {(weights.volume * 100).toFixed(1)}%
-                        <span className="trend">{getWeightChange(weights.volume, prevWeights?.volume) === 'up' ? '↑' : getWeightChange(weights.volume, prevWeights?.volume) === 'down' ? '↓' : '→'}</span>
+                      <td className={`weight-cell ${getWeightChange(weights.technicalSignals, prevWeights?.technicalSignals)}`}>
+                        {(weights.technicalSignals * 100).toFixed(1)}%
+                        <span className="trend">{getWeightChange(weights.technicalSignals, prevWeights?.technicalSignals) === 'up' ? '↑' : getWeightChange(weights.technicalSignals, prevWeights?.technicalSignals) === 'down' ? '↓' : '→'}</span>
                       </td>
-                      <td className={`weight-cell ${getWeightChange(weights.volatility, prevWeights?.volatility)}`}>
-                        {(weights.volatility * 100).toFixed(1)}%
-                        <span className="trend">{getWeightChange(weights.volatility, prevWeights?.volatility) === 'up' ? '↑' : getWeightChange(weights.volatility, prevWeights?.volatility) === 'down' ? '↓' : '→'}</span>
+                      <td className={`weight-cell ${getWeightChange(weights.newsSentiment, prevWeights?.newsSentiment)}`}>
+                        {(weights.newsSentiment * 100).toFixed(1)}%
+                        <span className="trend">{getWeightChange(weights.newsSentiment, prevWeights?.newsSentiment) === 'up' ? '↑' : getWeightChange(weights.newsSentiment, prevWeights?.newsSentiment) === 'down' ? '↓' : '→'}</span>
                       </td>
-                      <td className={`weight-cell ${getWeightChange(weights.newsFrequency, prevWeights?.newsFrequency)}`}>
-                        {(weights.newsFrequency * 100).toFixed(1)}%
-                        <span className="trend">{getWeightChange(weights.newsFrequency, prevWeights?.newsFrequency) === 'up' ? '↑' : getWeightChange(weights.newsFrequency, prevWeights?.newsFrequency) === 'down' ? '↓' : '→'}</span>
+                      <td className={`weight-cell ${getWeightChange(weights.redditSentiment, prevWeights?.redditSentiment)}`}>
+                        {(weights.redditSentiment * 100).toFixed(1)}%
+                        <span className="trend">{getWeightChange(weights.redditSentiment, prevWeights?.redditSentiment) === 'up' ? '↑' : getWeightChange(weights.redditSentiment, prevWeights?.redditSentiment) === 'down' ? '↓' : '→'}</span>
                       </td>
-                      <td className={`weight-cell ${getWeightChange(weights.analystRating, prevWeights?.analystRating)}`}>
-                        {(weights.analystRating * 100).toFixed(1)}%
-                        <span className="trend">{getWeightChange(weights.analystRating, prevWeights?.analystRating) === 'up' ? '↑' : getWeightChange(weights.analystRating, prevWeights?.analystRating) === 'down' ? '↓' : '→'}</span>
+                      <td className={`weight-cell ${getWeightChange(weights.volatilityControl, prevWeights?.volatilityControl)}`}>
+                        {(weights.volatilityControl * 100).toFixed(1)}%
+                        <span className="trend">{getWeightChange(weights.volatilityControl, prevWeights?.volatilityControl) === 'up' ? '↑' : getWeightChange(weights.volatilityControl, prevWeights?.volatilityControl) === 'down' ? '↓' : '→'}</span>
+                      </td>
+                      <td className={`weight-cell ${getWeightChange(weights.calibrationAdjustment, prevWeights?.calibrationAdjustment)}`}>
+                        {(weights.calibrationAdjustment * 100).toFixed(1)}%
+                        <span className="trend">{getWeightChange(weights.calibrationAdjustment, prevWeights?.calibrationAdjustment) === 'up' ? '↑' : getWeightChange(weights.calibrationAdjustment, prevWeights?.calibrationAdjustment) === 'down' ? '↓' : '→'}</span>
                       </td>
                       <td className="date-cell">
                         {formatDate(row.updated_at)}

@@ -20,6 +20,23 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 const init = () => {
   db.serialize(() => {
+    const ensureColumn = (tableName, columnName, columnDefinition) => {
+      db.all(`PRAGMA table_info(${tableName})`, (err, rows) => {
+        if (err) {
+          console.error(`Error reading schema for ${tableName}:`, err);
+          return;
+        }
+
+        if (!rows.some((row) => row.name === columnName)) {
+          db.run(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition}`, (alterErr) => {
+            if (alterErr) {
+              console.error(`Error adding ${columnName} to ${tableName}:`, alterErr);
+            }
+          });
+        }
+      });
+    };
+
     // Predictions table
     db.run(`
       CREATE TABLE IF NOT EXISTS predictions (
@@ -32,18 +49,20 @@ const init = () => {
         price_ranges TEXT,
         news_summary TEXT,
         algorithm_weights TEXT,
+        analysis_summary TEXT,
+        model_name TEXT,
+        signal_context TEXT,
+        feature_snapshot TEXT,
         created_at INTEGER DEFAULT (strftime('%s', 'now')),
         UNIQUE(ticker, prediction_date, target_dates)
       )
     `);
 
-    // Add price_ranges column if it doesn't exist (for existing databases)
-    db.run(`
-      PRAGMA table_info(predictions);
-    `, [], function(err, row) {
-      if (err) return;
-      // Column will be added automatically in new databases via CREATE TABLE above
-    });
+    ensureColumn('predictions', 'price_ranges', 'price_ranges TEXT');
+    ensureColumn('predictions', 'analysis_summary', 'analysis_summary TEXT');
+    ensureColumn('predictions', 'model_name', 'model_name TEXT');
+    ensureColumn('predictions', 'signal_context', 'signal_context TEXT');
+    ensureColumn('predictions', 'feature_snapshot', 'feature_snapshot TEXT');
 
     // Accuracy table
     db.run(`
@@ -55,10 +74,16 @@ const init = () => {
         predicted_price REAL NOT NULL,
         actual_price REAL,
         was_correct BOOLEAN,
+        realized_return_pct REAL,
+        error_pct REAL,
+        outcome_snapshot TEXT,
         checked_at INTEGER DEFAULT (strftime('%s', 'now')),
         FOREIGN KEY(prediction_id) REFERENCES predictions(id)
       )
     `);
+    ensureColumn('accuracy_checks', 'realized_return_pct', 'realized_return_pct REAL');
+    ensureColumn('accuracy_checks', 'error_pct', 'error_pct REAL');
+    ensureColumn('accuracy_checks', 'outcome_snapshot', 'outcome_snapshot TEXT');
 
     // News table
     db.run(`
@@ -92,6 +117,23 @@ const init = () => {
         weight_analyst_rating REAL,
         updated_at INTEGER DEFAULT (strftime('%s', 'now')),
         UNIQUE(week_number, year, ticker)
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS trained_models (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        model_name TEXT NOT NULL,
+        horizon_label TEXT NOT NULL,
+        intercept REAL NOT NULL,
+        coefficients TEXT NOT NULL,
+        feature_order TEXT NOT NULL,
+        training_examples INTEGER NOT NULL,
+        mae REAL,
+        rmse REAL,
+        trained_at INTEGER DEFAULT (strftime('%s', 'now')),
+        is_active BOOLEAN DEFAULT 1,
+        UNIQUE(model_name, horizon_label)
       )
     `);
 

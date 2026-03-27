@@ -109,6 +109,13 @@ export function PredictionsTab() {
     });
   };
 
+  const selectedLimit = tickers.slice(0, 5);
+  const allowedTickers = [...new Set([...selectedLimit, ...suggestedStocks.slice(0, 3)])];
+  const displayedPredictions = predictions
+    .filter(prediction => allowedTickers.includes(prediction.ticker))
+    .filter((prediction, idx) => selectedLimit.includes(prediction.ticker) || idx < 5)
+    .slice(0, 5);
+
   return (
     <div className="predictions-tab">
       <h2>Stock Predictions</h2>
@@ -164,16 +171,10 @@ export function PredictionsTab() {
         <div className="loading">Loading predictions...</div>
       ) : (
         <div className="predictions-grid">
-          {predictions.length === 0 ? (
+          {displayedPredictions.length === 0 ? (
             <div className="no-data">No predictions yet. Generate predictions to get started.</div>
           ) : (
-            predictions
-              .filter(prediction => {
-                // Only show user-selected stocks + 3 suggested stocks
-                const allAllowedStocks = [...tickers, ...suggestedStocks.slice(0, 3)];
-                return allAllowedStocks.includes(prediction.ticker);
-              })
-              .map(prediction => {
+            displayedPredictions.map(prediction => {
               try {
                 // Safe JSON parsing - check if already an object or string
                 const safeParse = (value) => {
@@ -220,17 +221,19 @@ export function PredictionsTab() {
                       <div className="price-range-container">
                         <div className="price-range-item low">
                           <span className="label">Low</span>
-                          <span className="price">${priceRange.low.toFixed(2)}</span>
+                          <span className="price">${Number(priceRange.low || 0).toFixed(2)}</span>
                         </div>
                         <div className="price-range-item mid">
                           <span className="label">Mid</span>
-                          <span className="price">${priceRange.mid.toFixed(2)}</span>
+                          <span className="price">${Number(priceRange.mid || 0).toFixed(2)}</span>
                         </div>
                         <div className="price-range-item high">
                           <span className="label">High</span>
-                          <span className="price">${priceRange.high.toFixed(2)}</span>
+                          <span className="price">${Number(priceRange.high || 0).toFixed(2)}</span>
                           <span className="confidence-badge">
-                            {(priceRange.confidences.high * 100).toFixed(0)}%
+                            {typeof priceRange.confidence === 'number'
+                              ? `${(priceRange.confidence * 100).toFixed(0)}%`
+                              : 'N/A'}
                           </span>
                         </div>
                       </div>

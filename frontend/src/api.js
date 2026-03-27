@@ -1,9 +1,8 @@
-const API_BASE_URL = 'http://localhost:5002/api'; // Force port 5002 for now
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
 
 // Debug: Log the API URL being used
-console.log('🔗 API_BASE_URL:', API_BASE_URL);
-console.log('🔗 REACT_APP_API_URL env var:', process.env.REACT_APP_API_URL);
-// Hot reload trigger: Modified at ${new Date().toISOString()}
+console.log('API_BASE_URL:', API_BASE_URL);
+console.log('REACT_APP_API_URL env var:', process.env.REACT_APP_API_URL);
 
 // Helper: Detect if error is a connection/network error
 const isConnectionError = (error) => {
@@ -20,7 +19,7 @@ const isConnectionError = (error) => {
 // Helper: Get user-friendly error message
 const getUserFriendlyError = (error) => {
   if (isConnectionError(error)) {
-    return '⚠️ Backend server is not responding. Please ensure the backend is running on port 5002. Run: cd backend && node server.js';
+    return `Backend server is not responding at ${API_BASE_URL}. Ensure the backend is running and the frontend API URL matches it.`;
   }
   if (error?.message?.includes('timeout')) {
     return '⚠️ Request timed out. The server is taking too long to respond.';

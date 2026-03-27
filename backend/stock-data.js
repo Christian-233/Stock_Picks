@@ -12,61 +12,144 @@ const FINNHUB_BASE = 'https://finnhub.io/api/v1';
 // YAHOO FINANCE DATA SOURCE (Recommended - Free, No Key Required)
 // ============================================================================
 
-let yahooFinance;
-try {
-  // Import the yahoo-finance2 module
-  const YahooFinance = require('yahoo-finance2');
-  yahooFinance = new YahooFinance();
-  console.log('✓ Yahoo Finance module initialized');
-} catch (e) {
-  console.warn('⚠ Yahoo Finance module not ready yet - will use fallback sources');
-  yahooFinance = null;
+let yahooFinance = null;
+let yahooFinanceClient = null;
+let yahooFinanceLoadAttempted = false;
+let delayImpl = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function loadYahooFinance() {
+  if (yahooFinanceLoadAttempted) {
+    return yahooFinance;
+  }
+
+  yahooFinanceLoadAttempted = true;
+
+  if (!YAHOO_FINANCE_ENABLED) {
+    console.warn('⚠ Yahoo Finance disabled via YAHOO_FINANCE_ENABLED');
+    return null;
+  }
+
+  try {
+    const yahooFinanceModule = await import('yahoo-finance2');
+    yahooFinance = yahooFinanceModule.default || yahooFinanceModule;
+    if (!yahooFinance) {
+      throw new Error('yahoo-finance2 module did not expose API');
+    }
+
+    // If we got a class constructor, instantiate once
+    if (typeof yahooFinance === 'function') {
+      yahooFinanceClient = new yahooFinance();
+      yahooFinance = yahooFinanceClient;
+    }
+
+    console.log('✓ Yahoo Finance module initialized via dynamic import');
+  } catch (e) {
+    console.warn('⚠ Yahoo Finance module not ready yet - will use fallback sources:', e.message);
+    yahooFinance = null;
+    yahooFinanceClient = null;
+  }
+
+  return yahooFinance;
 }
 
 async function getYahooFinancePrice(ticker) {
-  if (!yahooFinance || !YAHOO_FINANCE_ENABLED) return null;
-  try {
-    const quote = await yahooFinance.quote(ticker);
-    return {
-      ticker,
-      price: quote.regularMarketPrice,
-      timestamp: new Date().getTime(),
-      source: 'yahoo-finance',
-      marketCap: quote.marketCap,
-      pe: quote.trailingPE,
-      dividend: quote.trailingAnnualDividendRate
-    };
-  } catch (error) {
-    console.log(`[${ticker}] Yahoo Finance unavailable`);
-    return null;
+  const yf = await loadYahooFinance();
+  if (!yf) return null;
+
+  const maxAttempts = 3;
+  let attempt = 0;
+  let lastError = null;
+
+  while (attempt < maxAttempts) {
+    attempt += 1;
+    try {
+      const quote = await yf.quote(ticker);
+      if (!quote || !quote.regularMarketPrice) {
+        console.warn(`[${ticker}] Yahoo Finance returned null price object`, quote);
+        return null;
+      }
+      return {
+        ticker,
+        price: quote.regularMarketPrice,
+        timestamp: new Date().getTime(),
+        source: 'yahoo-finance',
+        marketCap: quote.marketCap,
+        pe: quote.trailingPE,
+        dividend: quote.trailingAnnualDividendRate
+      };
+    } catch (error) {
+      lastError = error;
+      const message = (error && error.message) ? error.message.toLowerCase() : '';
+      const isRateLimit = message.includes('429') || message.includes('too many requests') || message.includes('rate limit');
+      const isCrumb = message.includes('failed to get crumb');
+
+      console.warn(`[${ticker}] Yahoo Finance attempt ${attempt} failed:`, error.message || error);
+
+      if (attempt >= maxAttempts || (!isRateLimit && !isCrumb)) {
+        break;
+      }
+
+      await delayImpl(600 * attempt);
+    }
   }
+
+  console.warn(`[${ticker}] Yahoo Finance failed after ${attempt} attempts. using fallback data sources.`, lastError ? lastError.message : 'no error');
+  return null;
 }
 
+
 async function getYahooFinanceHistory(ticker, days = 365) {
-  if (!yahooFinance || !YAHOO_FINANCE_ENABLED) return null;
-  try {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+  const yf = await loadYahooFinance();
+  if (!yf) return null;
 
-    const result = await yahooFinance.historical(ticker, {
-      period1: startDate,
-      period2: endDate,
-      interval: '1d'
-    });
+  const maxAttempts = 3;
+  let attempt = 0;
+  let lastError = null;
 
-    return result.map(bar => ({
-      date: bar.date.toISOString().split('T')[0],
-      price: bar.close,
-      volume: bar.volume,
-      high: bar.high,
-      low: bar.low,
-      open: bar.open
-    }));
-  } catch (error) {
-    console.log(`Yahoo Finance history unavailable for ${ticker}: ${error.message}`);
-    return null;
+  while (attempt < maxAttempts) {
+    attempt += 1;
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const result = await yf.historical(ticker, {
+        period1: startDate,
+        period2: endDate,
+        interval: '1d'
+      });
+
+      if (!Array.isArray(result) || result.length === 0) {
+        console.warn(`[${ticker}] Yahoo Finance history returned no data`);
+        return null;
+      }
+
+      return result.map(bar => ({
+        date: bar.date ? bar.date.toISOString().split('T')[0] : null,
+        price: bar.close || bar.adjclose || null,
+        volume: bar.volume || 0,
+        high: bar.high || bar.low || bar.close || 0,
+        low: bar.low || bar.high || bar.close || 0,
+        open: bar.open || bar.close || 0
+      })).filter(entry => entry.date && entry.price !== null);
+    } catch (error) {
+      lastError = error;
+      const message = (error && error.message) ? error.message.toLowerCase() : '';
+      const isRateLimit = message.includes('429') || message.includes('too many requests') || message.includes('rate limit');
+      const isCrumb = message.includes('failed to get crumb');
+
+      console.warn(`[${ticker}] Yahoo Finance history attempt ${attempt} failed:`, error.message || error);
+
+      if (attempt >= maxAttempts || (!isRateLimit && !isCrumb)) {
+        break;
+      }
+
+      await delayImpl(600 * attempt);
+    }
   }
+
+  console.warn(`[${ticker}] Yahoo Finance history failed after ${attempt} attempts. using fallback data sources.`, lastError ? lastError.message : 'no error');
+  return null;
 }
 
 // ============================================================================
@@ -482,5 +565,20 @@ module.exports = {
   getMockHistory,
 
   // Monitoring
-  getDataSourceStatus
+  getDataSourceStatus,
+
+  // Test hooks
+  __setYahooFinanceClient(client) {
+    yahooFinance = client;
+    yahooFinanceClient = client;
+    yahooFinanceLoadAttempted = true;
+  },
+  __resetYahooFinanceClient() {
+    yahooFinance = null;
+    yahooFinanceClient = null;
+    yahooFinanceLoadAttempted = false;
+  },
+  __setDelayImplementation(fn) {
+    delayImpl = fn;
+  }
 };

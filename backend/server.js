@@ -7,7 +7,8 @@ const routes = require('./routes');
 const scheduler = require('./scheduler');
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5002;
+const HOST = process.env.HOST || '127.0.0.1';
 
 // Middleware
 app.use(cors({
@@ -30,12 +31,16 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Stock Prediction API running on port ${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+  console.log(`Stock Prediction API running on ${HOST}:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
-  
+
   // Initialize scheduler for predictions
   scheduler.initializeScheduler();
+});
+
+server.on('error', (error) => {
+  console.error(`Failed to start server on ${HOST}:${PORT}:`, error);
 });
 
 module.exports = app;

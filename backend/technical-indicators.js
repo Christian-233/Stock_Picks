@@ -186,9 +186,9 @@ function interpretAllSignals(priceHistory) {
     return { error: 'Insufficient data for analysis' };
   }
   
-  const closes = priceHistory.map(p => p.close);
-  const highs = priceHistory.map(p => p.high || p.close);
-  const lows = priceHistory.map(p => p.low || p.close);
+  const closes = priceHistory.map(p => p.close ?? p.price);
+  const highs = priceHistory.map(p => p.high || p.close || p.price);
+  const lows = priceHistory.map(p => p.low || p.close || p.price);
   const volumes = priceHistory.map(p => p.volume || 1000000);
   
   // Calculate all indicators

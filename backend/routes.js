@@ -18,7 +18,9 @@ router.get('/predictions', async (req, res) => {
       predicted_prices: JSON.parse(p.predicted_prices),
       confidence_scores: JSON.parse(p.confidence_scores),
       price_ranges: p.price_ranges ? JSON.parse(p.price_ranges) : null,
-      algorithm_weights: JSON.parse(p.algorithm_weights)
+      algorithm_weights: p.algorithm_weights ? JSON.parse(p.algorithm_weights) : null,
+      signal_context: p.signal_context ? JSON.parse(p.signal_context) : null,
+      feature_snapshot: p.feature_snapshot ? JSON.parse(p.feature_snapshot) : null
     }));
 
     res.json(formattedPredictions);
@@ -42,7 +44,9 @@ router.get('/predictions/:ticker', async (req, res) => {
       predicted_prices: JSON.parse(p.predicted_prices),
       confidence_scores: JSON.parse(p.confidence_scores),
       price_ranges: p.price_ranges ? JSON.parse(p.price_ranges) : null,
-      algorithm_weights: JSON.parse(p.algorithm_weights)
+      algorithm_weights: p.algorithm_weights ? JSON.parse(p.algorithm_weights) : null,
+      signal_context: p.signal_context ? JSON.parse(p.signal_context) : null,
+      feature_snapshot: p.feature_snapshot ? JSON.parse(p.feature_snapshot) : null
     }));
 
     res.json(formattedPredictions);
@@ -198,6 +202,15 @@ router.get('/weights/history', async (req, res) => {
   }
 });
 
+router.post('/model/retrain', async (req, res) => {
+  try {
+    const results = await aiPredictor.retrainLearningModels();
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Update algorithm weights
 router.post('/weights/update', async (req, res) => {
   try {
@@ -226,11 +239,12 @@ router.get('/algorithm/details', async (req, res) => {
       year: currentYear,
       weights,
       description: {
-        sentiment: 'Sentiment analysis of news articles (positive/negative/neutral)',
-        volume: 'Trading volume compared to average',
-        volatility: 'Historical volatility of the stock',
-        newsFrequency: 'Number of news articles in the past week',
-        analystRating: 'Average analyst rating'
+        historicalTrend: 'Multi-year return and momentum profile derived from price history',
+        technicalSignals: 'Technical indicator blend derived from moving averages, RSI, MACD, and volatility',
+        newsSentiment: 'News sentiment extracted from recent headlines and summaries',
+        redditSentiment: 'Reddit mention volume and community sentiment',
+        volatilityControl: 'Risk adjustment based on recent and yearly volatility',
+        calibrationAdjustment: 'Bias correction using the last week of prediction accuracy'
       }
     });
   } catch (error) {

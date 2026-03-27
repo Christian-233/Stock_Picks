@@ -3,8 +3,11 @@ const db = require('./database');
 const NaturalLanguageProcessing = require('natural');
 const redditScraper = require('./reddit-scraper');
 
-const NewsAPI_KEY = process.env.NEWS_API_KEY;
 const NEWSAPI_BASE = 'https://newsapi.org/v2';
+
+function getNewsApiKey() {
+  return process.env.NEWS_API_KEY;
+}
 
 // Simple sentiment analysis
 function analyzeSentiment(text) {
@@ -25,11 +28,13 @@ function analyzeSentiment(text) {
 async function scrapeNewsForTicker(ticker) {
   try {
     const response = await axios.get(`${NEWSAPI_BASE}/everything`, {
-      q: ticker,
-      sortBy: 'publishedAt',
-      language: 'en',
-      pageSize: 20,
-      apiKey: NewsAPI_KEY
+      params: {
+        q: ticker,
+        sortBy: 'publishedAt',
+        language: 'en',
+        pageSize: 20,
+        apiKey: getNewsApiKey()
+      }
     });
 
     const articles = response.data.articles || [];

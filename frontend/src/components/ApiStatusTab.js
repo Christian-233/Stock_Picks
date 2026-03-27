@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../api';
 import './ApiStatusTab.css';
 
 export function ApiStatusTab() {
@@ -11,7 +12,7 @@ export function ApiStatusTab() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:5002/api/health-check');
+      const response = await fetch(`${API_BASE_URL}/health-check`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       const data = await response.json();
@@ -95,7 +96,7 @@ export function ApiStatusTab() {
       {error && (
         <div className="error-message">
           <p>❌ Error checking APIs: {error}</p>
-          <p className="error-hint">Make sure the backend is running on port 5002</p>
+          <p className="error-hint">Make sure the backend is running and the frontend API URL matches it.</p>
         </div>
       )}
 
