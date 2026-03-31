@@ -224,6 +224,48 @@ export const apiClient = {
     return response.json();
   },
 
+  getModelEvaluation: async (maxWindows = null) => {
+    try {
+      const query = Number.isFinite(Number(maxWindows)) ? `?maxWindows=${Number(maxWindows)}` : '';
+      const response = await fetch(`${API_BASE_URL}/model/evaluate${query}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    } catch (error) {
+      console.error('getModelEvaluation error:', error);
+      throw new Error(getUserFriendlyError(error));
+    }
+  },
+
+  getModelInsights: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/model/insights`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    } catch (error) {
+      console.error('getModelInsights error:', error);
+      throw new Error(getUserFriendlyError(error));
+    }
+  },
+
+  retrainModel: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/model/retrain`, {
+        method: 'POST'
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    } catch (error) {
+      console.error('retrainModel error:', error);
+      throw new Error(getUserFriendlyError(error));
+    }
+  },
+
   getSuggestedStocks: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/suggested-stocks`);

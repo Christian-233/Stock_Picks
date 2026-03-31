@@ -16,7 +16,8 @@ function normalizePriceHistory(history = []) {
       high: Number(entry.high ?? entry.close ?? entry.price ?? 0),
       low: Number(entry.low ?? entry.close ?? entry.price ?? 0),
       open: Number(entry.open ?? entry.close ?? entry.price ?? 0),
-      volume: Number(entry.volume ?? 0)
+      volume: Number(entry.volume ?? 0),
+      source: entry.source || 'unknown'
     }))
     .filter((entry) => Number.isFinite(entry.close) && entry.close > 0);
 }
@@ -49,6 +50,27 @@ function calculateVolatility(closes, periods = 30) {
   const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
   const variance = returns.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / returns.length;
   return Math.sqrt(variance);
+}
+
+function calculateCorrelation(seriesA = [], seriesB = []) {
+  const length = Math.min(seriesA.length, seriesB.length);
+  if (length < 2) {
+    return 0;
+  }
+
+  const trimmedA = seriesA.slice(-length);
+  const trimmedB = seriesB.slice(-length);
+  const meanA = trimmedA.reduce((sum, value) => sum + value, 0) / length;
+  const meanB = trimmedB.reduce((sum, value) => sum + value, 0) / length;
+  const covariance = trimmedA.reduce((sum, value, index) => sum + ((value - meanA) * (trimmedB[index] - meanB)), 0) / length;
+  const varianceA = trimmedA.reduce((sum, value) => sum + ((value - meanA) ** 2), 0) / length;
+  const varianceB = trimmedB.reduce((sum, value) => sum + ((value - meanB) ** 2), 0) / length;
+
+  if (!varianceA || !varianceB) {
+    return 0;
+  }
+
+  return covariance / Math.sqrt(varianceA * varianceB);
 }
 
 function summarizeHistoricalMetrics(history = []) {
@@ -104,19 +126,97 @@ function summarizeHistoricalMetrics(history = []) {
   };
 }
 
+function summarizeBenchmarkMetrics(tickerHistory = [], spyHistory = [], qqqHistory = []) {
+  const tickerNormalized = normalizePriceHistory(tickerHistory);
+  const spyNormalized = normalizePriceHistory(spyHistory);
+  const qqqNormalized = normalizePriceHistory(qqqHistory);
+  const tickerCloses = tickerNormalized.map((entry) => entry.close);
+  const spyCloses = spyNormalized.map((entry) => entry.close);
+  const qqqCloses = qqqNormalized.map((entry) => entry.close);
+
+  const ticker1M = calculateReturn(tickerCloses, 21);
+  const ticker3M = calculateReturn(tickerCloses, 63);
+  const spy1M = calculateReturn(spyCloses, 21);
+  const spy3M = calculateReturn(spyCloses, 63);
+  const qqq1M = calculateReturn(qqqCloses, 21);
+  const qqq3M = calculateReturn(qqqCloses, 63);
+
+  const tickerReturns = [];
+  const spyReturns = [];
+  const pairLength = Math.min(tickerCloses.length, spyCloses.length);
+  for (let i = 1; i < pairLength; i += 1) {
+    tickerReturns.push((tickerCloses[tickerCloses.length - pairLength + i] - tickerCloses[tickerCloses.length - pairLength + i - 1]) / tickerCloses[tickerCloses.length - pairLength + i - 1]);
+    spyReturns.push((spyCloses[spyCloses.length - pairLength + i] - spyCloses[spyCloses.length - pairLength + i - 1]) / spyCloses[spyCloses.length - pairLength + i - 1]);
+  }
+
+  return {
+    relativeReturnVsSpy1M: ticker1M - spy1M,
+    relativeReturnVsSpy3M: ticker3M - spy3M,
+    relativeReturnVsQqq1M: ticker1M - qqq1M,
+    relativeReturnVsQqq3M: ticker3M - qqq3M,
+    benchmarkMomentum: (spy1M + qqq1M + spy3M + qqq3M) / 4,
+    benchmarkCorrelation: calculateCorrelation(tickerReturns.slice(-60), spyReturns.slice(-60))
+  };
+}
+
 function summarizeNewsMetrics(articles = []) {
   const sentimentMap = { positive: 1, neutral: 0, negative: -1 };
   const validArticles = articles.filter(Boolean);
   const redditArticles = validArticles.filter((article) => article.source === 'reddit');
+  const nonRedditArticles = validArticles.filter((article) => article.source !== 'reddit');
+  const nowSeconds = Math.floor(Date.now() / 1000);
   const sentimentTotal = validArticles.reduce((sum, article) => sum + (sentimentMap[article.sentiment] || 0), 0);
   const normalizedSentiment = validArticles.length
     ? clamp(sentimentTotal / validArticles.length, -1, 1)
     : 0;
+  const sourceCounts = validArticles.reduce((counts, article) => {
+    const sourceName = String(article.source || 'unknown').toLowerCase();
+    counts[sourceName] = (counts[sourceName] || 0) + 1;
+    return counts;
+  }, {});
+  const sourceDiversity = Object.keys(sourceCounts).length;
+  const sourceDiversityScore = validArticles.length
+    ? clamp(sourceDiversity / Math.min(validArticles.length, 6), 0, 1)
+    : 0;
+  const recencyScores = validArticles.map((article) => {
+    const ageHours = Math.max(0, (nowSeconds - Number(article.published_at || nowSeconds)) / 3600);
+    return Math.exp(-ageHours / 48);
+  });
+  const recencyScore = recencyScores.length
+    ? recencyScores.reduce((sum, value) => sum + value, 0) / recencyScores.length
+    : 0;
+
+  const parseRedditEngagement = (description = '') => {
+    const normalized = String(description || '').toLowerCase();
+    const commentsMatch = normalized.match(/(\d+)\s+comments?/);
+    const upvotesMatch = normalized.match(/(\d+)\s+upvotes?/);
+    const comments = commentsMatch ? Number(commentsMatch[1]) : 0;
+    const upvotes = upvotesMatch ? Number(upvotesMatch[1]) : 0;
+    return { comments, upvotes };
+  };
+
+  const redditEngagementRaw = redditArticles.reduce((sum, article) => {
+    const { comments, upvotes } = parseRedditEngagement(article.description);
+    return sum + (comments * 0.7) + (upvotes * 0.3);
+  }, 0);
+  const redditEngagementScore = clamp(redditEngagementRaw / Math.max(redditArticles.length * 60, 1), 0, 1);
+  const redditPostRatio = validArticles.length ? redditArticles.length / validArticles.length : 0;
+  const trustedSources = new Set(['reuters', 'bloomberg', 'cnbc', 'wsj', 'financial times', 'marketwatch', 'yahoo finance', 'newsapi', 'reddit']);
+  const trustedRatio = nonRedditArticles.length
+    ? nonRedditArticles.filter((article) => trustedSources.has(String(article.source || '').toLowerCase())).length / nonRedditArticles.length
+    : (validArticles.length ? 1 : 0);
+  const articleQualityScore = clamp((trustedRatio * 0.65) + (recencyScore * 0.35), 0, 1);
 
   return {
     articleCount: validArticles.length,
     redditMentions: redditArticles.length,
     sentimentScore: normalizedSentiment,
+    sourceDiversity,
+    sourceDiversityScore,
+    recencyScore,
+    articleQualityScore,
+    redditEngagementScore,
+    redditPostRatio,
     positiveCount: validArticles.filter((article) => article.sentiment === 'positive').length,
     negativeCount: validArticles.filter((article) => article.sentiment === 'negative').length,
     neutralCount: validArticles.filter((article) => article.sentiment === 'neutral').length,
@@ -152,6 +252,34 @@ function summarizeCalibrationMetrics(checks = []) {
     accuracyRate: correctChecks / validChecks.length,
     meanAbsoluteError: absoluteErrors.reduce((sum, value) => sum + value, 0) / absoluteErrors.length,
     meanError: errors.reduce((sum, value) => sum + value, 0) / errors.length
+  };
+}
+
+function summarizeAccuracyHistory(checks = []) {
+  const resolvedChecks = checks.filter((check) =>
+    Number.isFinite(Number(check.predicted_price)) &&
+    Number.isFinite(Number(check.actual_price)) &&
+    check.was_correct !== null &&
+    check.was_correct !== undefined
+  );
+  const unresolvedChecks = checks.filter((check) =>
+    !(
+      Number.isFinite(Number(check.predicted_price)) &&
+      Number.isFinite(Number(check.actual_price)) &&
+      check.was_correct !== null &&
+      check.was_correct !== undefined
+    )
+  ).length;
+  const correctChecks = resolvedChecks.filter((check) => Number(check.was_correct) === 1 || check.was_correct === true).length;
+  const totalChecks = resolvedChecks.length;
+  const accuracyRate = totalChecks > 0 ? (correctChecks / totalChecks) * 100 : 0;
+
+  return {
+    totalChecks,
+    resolvedChecks: totalChecks,
+    unresolvedChecks,
+    correctChecks,
+    accuracyRate: roundPrice(accuracyRate)
   };
 }
 
@@ -237,7 +365,9 @@ module.exports = {
   roundPrice,
   normalizePriceHistory,
   summarizeHistoricalMetrics,
+  summarizeBenchmarkMetrics,
   summarizeNewsMetrics,
   summarizeCalibrationMetrics,
+  summarizeAccuracyHistory,
   createDeterministicForecast
 };

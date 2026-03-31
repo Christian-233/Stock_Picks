@@ -21,22 +21,11 @@
 2. Paste: `NEWS_API_KEY=your_copied_key`
 3. Save the file
 
-### 2. OpenAI API (Optional - for enhanced predictions)
+### 2. Local Signal Model
 
-**Sign up:**
-1. Visit https://platform.openai.com/signup
-2. Create account with email or Google
-3. Verify email
+The project now uses a fully local signal engine for directional/news weighting.
 
-**Get your key:**
-1. Go to https://platform.openai.com/api/keys
-2. Click "Create new secret key"
-3. Copy the key (save it - you won't see it again!)
-
-**Add to project:**
-1. Open `backend/.env`
-2. Paste: `OPENAI_API_KEY=your_key`
-3. Save the file
+You do not need an OpenAI API key for predictions.
 
 ## Port Configuration
 

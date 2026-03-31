@@ -4,6 +4,8 @@ const db = require('./database');
 const aiPredictor = require('./ai-predictor');
 const newsScraper = require('./news-scraper');
 const stockData = require('./stock-data');
+const { summarizeAccuracyHistory } = require('./prediction-math');
+const { importNewsRows } = require('./news-importer');
 
 // Get all current predictions
 router.get('/predictions', async (req, res) => {
@@ -65,7 +67,9 @@ router.post('/predict', async (req, res) => {
     }
 
     console.log(`Generating predictions for tickers: ${tickers.join(', ')}`);
-    const predictions = await aiPredictor.generateMondayPredictions(tickers);
+    const result = await aiPredictor.generateMondayPredictions(tickers);
+    const predictions = Array.isArray(result) ? result : result.predictions;
+    const skipped = Array.isArray(result) ? [] : (result.skipped || []);
     
     if (!predictions || predictions.length === 0) {
       return res.status(500).json({ 
@@ -74,7 +78,7 @@ router.post('/predict', async (req, res) => {
       });
     }
     
-    res.json({ success: true, predictions });
+    res.json({ success: true, predictions, skipped });
   } catch (error) {
     console.error('Error in /predict endpoint:', error);
     res.status(500).json({ 
@@ -137,6 +141,23 @@ router.post('/scrape-news', async (req, res) => {
   }
 });
 
+router.post('/news/import', async (req, res) => {
+  try {
+    const { rows, defaultTicker, defaultSource } = req.body || {};
+    if (!Array.isArray(rows) || !rows.length) {
+      return res.status(400).json({ error: 'Provide rows array with at least one news/reddit item' });
+    }
+
+    const result = await importNewsRows(rows, {
+      defaultTicker,
+      defaultSource
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get stock price
 router.get('/stock/:ticker', async (req, res) => {
   try {
@@ -165,16 +186,15 @@ router.get('/accuracy/:ticker', async (req, res) => {
       [ticker.toUpperCase()]
     );
 
-    // Calculate accuracy rate
-    const totalChecks = accuracy.length;
-    const correctChecks = accuracy.filter(a => a.was_correct).length;
-    const accuracyRate = totalChecks > 0 ? (correctChecks / totalChecks) * 100 : 0;
+    const accuracySummary = summarizeAccuracyHistory(accuracy);
 
     res.json({
       ticker,
-      totalChecks,
-      correctChecks,
-      accuracyRate: Math.round(accuracyRate * 100) / 100,
+      totalChecks: accuracySummary.totalChecks,
+      resolvedChecks: accuracySummary.resolvedChecks,
+      unresolvedChecks: accuracySummary.unresolvedChecks,
+      correctChecks: accuracySummary.correctChecks,
+      accuracyRate: accuracySummary.accuracyRate,
       checks: accuracy
     });
   } catch (error) {
@@ -206,6 +226,50 @@ router.post('/model/retrain', async (req, res) => {
   try {
     const results = await aiPredictor.retrainLearningModels();
     res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/model/self-train', async (req, res) => {
+  try {
+    const result = await aiPredictor.runSelfTrainingCycle(req.body || {});
+    const statusCode = result.skipped ? 202 : 200;
+    res.status(statusCode).json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/model/self-train/status', async (req, res) => {
+  try {
+    const status = aiPredictor.getSelfTrainingStatus();
+    res.json({ success: true, status });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/model/evaluate', async (req, res) => {
+  try {
+    const requestedMaxWindows = req.query.maxWindows ? Number(req.query.maxWindows) : undefined;
+    if (requestedMaxWindows !== undefined && (!Number.isFinite(requestedMaxWindows) || requestedMaxWindows <= 0)) {
+      return res.status(400).json({ error: 'maxWindows must be a positive number' });
+    }
+
+    const results = await aiPredictor.evaluateModelWalkForward({
+      maxWindows: requestedMaxWindows
+    });
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/model/insights', async (req, res) => {
+  try {
+    const insights = await aiPredictor.getModelInsights();
+    res.json({ success: true, insights });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

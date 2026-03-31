@@ -12,6 +12,15 @@
   font-weight: 500;
 }
 
+.warning-message {
+  background: #fff3cd;
+  color: #6c5600;
+  border: 1px solid #ffe08a;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
 .ticker-controls {
   background: #f5f5f5;
   padding: 20px;
@@ -178,6 +187,28 @@
   border-radius: 4px;
   font-size: 12px;
   font-weight: bold;
+}
+
+.quality-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.quality-badge.normal {
+  background: #d4edda;
+  color: #155724;
+}
+
+.quality-badge.downgrade {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.quality-badge.exclude {
+  background: #f8d7da;
+  color: #721c24;
 }
 
 .prediction-details {

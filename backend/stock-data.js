@@ -35,11 +35,12 @@ async function loadYahooFinance() {
     if (!yahooFinance) {
       throw new Error('yahoo-finance2 module did not expose API');
     }
-
-    // If we got a class constructor, instantiate once
+    // In this environment yahoo-finance2 exports a class constructor
     if (typeof yahooFinance === 'function') {
       yahooFinanceClient = new yahooFinance();
       yahooFinance = yahooFinanceClient;
+    } else {
+      yahooFinanceClient = yahooFinance;
     }
 
     console.log('✓ Yahoo Finance module initialized via dynamic import');
@@ -113,11 +114,23 @@ async function getYahooFinanceHistory(ticker, days = 365) {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
-      const result = await yf.historical(ticker, {
-        period1: startDate,
-        period2: endDate,
-        interval: '1d'
-      });
+      let result = null;
+      if (typeof yf.historical === 'function') {
+        result = await yf.historical(ticker, {
+          period1: startDate,
+          period2: endDate,
+          interval: '1d'
+        });
+      } else if (typeof yf.chart === 'function') {
+        const chart = await yf.chart(ticker, {
+          period1: startDate,
+          period2: endDate,
+          interval: '1d'
+        });
+        result = Array.isArray(chart?.quotes) ? chart.quotes : null;
+      } else {
+        throw new Error('Yahoo Finance client has no historical or chart method');
+      }
 
       if (!Array.isArray(result) || result.length === 0) {
         console.warn(`[${ticker}] Yahoo Finance history returned no data`);
@@ -130,7 +143,8 @@ async function getYahooFinanceHistory(ticker, days = 365) {
         volume: bar.volume || 0,
         high: bar.high || bar.low || bar.close || 0,
         low: bar.low || bar.high || bar.close || 0,
-        open: bar.open || bar.close || 0
+        open: bar.open || bar.close || 0,
+        source: 'yahoo-finance'
       })).filter(entry => entry.date && entry.price !== null);
     } catch (error) {
       lastError = error;
@@ -208,7 +222,8 @@ async function getAlphaVantageHistory(ticker, days = 365) {
         volume: parseInt(data['5. volume']),
         high: parseFloat(data['2. high']),
         low: parseFloat(data['3. low']),
-        open: parseFloat(data['1. open'])
+        open: parseFloat(data['1. open']),
+        source: 'alpha-vantage'
       }))
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(-days);
@@ -278,12 +293,92 @@ async function getFinnhubHistory(ticker, days = 365) {
       volume: response.data.v[index],
       high: response.data.h[index],
       low: response.data.l[index],
-      open: response.data.o[index]
+      open: response.data.o[index],
+      source: 'finnhub'
     }));
   } catch (error) {
     console.log(`Finnhub history unavailable for ${ticker}: ${error.message}`);
     return null;
   }
+}
+
+// ============================================================================
+// STOOQ DATA SOURCE (No key required, CSV endpoint)
+// ============================================================================
+
+function toStooqSymbol(ticker) {
+  const normalized = String(ticker || '').toLowerCase();
+  if (normalized.endsWith('.us') || normalized.endsWith('.uk') || normalized.endsWith('.de')) {
+    return normalized;
+  }
+  return `${normalized}.us`;
+}
+
+async function getStooqHistory(ticker, days = 365) {
+  try {
+    const symbol = toStooqSymbol(ticker);
+    const response = await axios.get('https://stooq.com/q/d/l/', {
+      params: {
+        s: symbol,
+        i: 'd'
+      },
+      timeout: 7000
+    });
+    const csv = String(response.data || '').trim();
+    if (!csv || csv.toLowerCase().startsWith('no data')) {
+      return null;
+    }
+
+    const [header, ...rows] = csv.split('\n').map((line) => line.trim()).filter(Boolean);
+    if (!header || !rows.length) {
+      return null;
+    }
+
+    const parsed = rows.map((row) => {
+      const [date, open, high, low, close, volume] = row.split(',');
+      const closePrice = Number(close);
+      if (!date || !Number.isFinite(closePrice) || closePrice <= 0) {
+        return null;
+      }
+
+      return {
+        date,
+        price: closePrice,
+        volume: Number(volume || 0),
+        high: Number(high || closePrice),
+        low: Number(low || closePrice),
+        open: Number(open || closePrice),
+        source: 'stooq'
+      };
+    }).filter(Boolean);
+
+    if (!parsed.length) {
+      return null;
+    }
+
+    return parsed.slice(-days);
+  } catch (error) {
+    console.log(`Stooq history unavailable for ${ticker}: ${error.message}`);
+    return null;
+  }
+}
+
+async function getStooqPrice(ticker) {
+  const history = await getStooqHistory(ticker, 10);
+  if (!history || !history.length) {
+    return null;
+  }
+
+  const latest = history[history.length - 1];
+  return {
+    ticker,
+    price: latest.price,
+    timestamp: new Date().getTime(),
+    source: 'stooq',
+    high: latest.high,
+    low: latest.low,
+    open: latest.open
+  };
 }
 
 // ============================================================================
@@ -374,7 +469,8 @@ function getMockHistory(ticker, days = 365) {
       price: Math.round(dayPrice * 100) / 100,
       volume: Math.floor(Math.random() * 50000000 + 10000000),
       high: Math.round(dayPrice * 1.02 * 100) / 100,
-      low: Math.round(dayPrice * 0.98 * 100) / 100
+      low: Math.round(dayPrice * 0.98 * 100) / 100,
+      source: 'mock'
     });
   }
 
@@ -419,6 +515,12 @@ async function getStockPrice(ticker) {
     }
   }
 
+  const stooqPrice = await getStooqPrice(ticker);
+  if (stooqPrice) {
+    console.log(`[${ticker}] ✓ Price from Stooq: $${stooqPrice.price}`);
+    return stooqPrice;
+  }
+
   // Fall back to mock data
   const mockPrice = getMockPrice(ticker);
   console.log(`[${ticker}] ⚠ Using mock price: $${mockPrice.price}`);
@@ -457,6 +559,12 @@ async function getHistoricalData(ticker, days = 365) {
       console.log(`[${ticker}] ✓ Historical data from Alpha Vantage: ${avHistory.length} days`);
       return avHistory;
     }
+  }
+
+  const stooqHistory = await getStooqHistory(ticker, days);
+  if (stooqHistory && stooqHistory.length > 0) {
+    console.log(`[${ticker}] ✓ Historical data from Stooq: ${stooqHistory.length} days`);
+    return stooqHistory;
   }
 
   // Fall back to mock data
@@ -537,6 +645,12 @@ function getDataSourceStatus() {
       rateLimit: '5 calls/minute (free), higher for paid',
       latency: '1-3 seconds'
     },
+    stooq: {
+      enabled: true,
+      available: 'Public CSV endpoint (no key)',
+      rateLimit: 'Undocumented',
+      latency: '1-2 seconds'
+    },
     mockData: {
       enabled: true,
       available: 'Always (fallback)',
@@ -559,6 +673,8 @@ module.exports = {
   getYahooFinanceHistory,
   getFinnhubPrice,
   getFinnhubHistory,
+  getStooqPrice,
+  getStooqHistory,
   getAlphaVantagePrice,
   getAlphaVantageHistory,
   getMockPrice,

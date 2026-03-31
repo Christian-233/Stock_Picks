@@ -62,4 +62,68 @@ describe('api client configuration', () => {
     );
     expect(global.fetch).toHaveBeenCalledWith('http://localhost:5002/api/predictions');
   });
+
+  test('getModelInsights hits the model insights endpoint', async () => {
+    process.env.REACT_APP_API_URL = 'http://localhost:5002/api';
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, insights: {} })
+    });
+
+    const { apiClient } = require('./api');
+    const response = await apiClient.getModelInsights();
+
+    expect(global.fetch).toHaveBeenCalledWith('http://localhost:5002/api/model/insights');
+    expect(response).toEqual({ success: true, insights: {} });
+  });
+
+  test('getModelEvaluation forwards maxWindows query parameter', async () => {
+    process.env.REACT_APP_API_URL = 'http://localhost:5002/api';
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, results: {} })
+    });
+
+    const { apiClient } = require('./api');
+    const response = await apiClient.getModelEvaluation(40);
+
+    expect(global.fetch).toHaveBeenCalledWith('http://localhost:5002/api/model/evaluate?maxWindows=40');
+    expect(response).toEqual({ success: true, results: {} });
+  });
+
+  test('retrainModel posts to the retrain endpoint', async () => {
+    process.env.REACT_APP_API_URL = 'http://localhost:5002/api';
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true })
+    });
+
+    const { apiClient } = require('./api');
+    const response = await apiClient.retrainModel();
+
+    expect(global.fetch).toHaveBeenCalledWith('http://localhost:5002/api/model/retrain', {
+      method: 'POST'
+    });
+    expect(response).toEqual({ success: true });
+  });
+
+  test('generatePredictions returns skipped tickers metadata', async () => {
+    process.env.REACT_APP_API_URL = 'http://localhost:5002/api';
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        predictions: [],
+        skipped: [{ ticker: 'AAPL', reason: 'current price source reliability is weak' }]
+      })
+    });
+
+    const { apiClient } = require('./api');
+    const response = await apiClient.generatePredictions(['AAPL']);
+
+    expect(global.fetch).toHaveBeenCalledWith('http://localhost:5002/api/predict', expect.objectContaining({
+      method: 'POST'
+    }));
+    expect(response.skipped).toEqual([{ ticker: 'AAPL', reason: 'current price source reliability is weak' }]);
+  });
 });

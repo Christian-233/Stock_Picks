@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { PredictionsTab } from './components/PredictionsTab';
+import { RecommendationBox } from './components/RecommendationBox';
 import { NewsTab } from './components/NewsTab';
 import { AlgorithmTab } from './components/AlgorithmTab';
+import { ModelInsightsTab } from './components/ModelInsightsTab';
 import { WeightsTab } from './components/WeightsTab';
 import { ApiStatusTab } from './components/ApiStatusTab';
 import stonkImage from './assets/stonk.jpeg';
@@ -56,6 +58,13 @@ function App() {
             Algorithm
           </button>
           <button
+            className={`nav-tab ${activeTab === 'model' ? 'active' : ''}`}
+            onClick={() => setActiveTab('model')}
+          >
+            <span className="tab-icon">🧠</span>
+            Model Insights
+          </button>
+          <button
             className={`nav-tab ${activeTab === 'weights' ? 'active' : ''}`}
             onClick={() => setActiveTab('weights')}
           >
@@ -73,9 +82,15 @@ function App() {
       </nav>
 
       <main className="app-main">
-        {activeTab === 'predictions' && <PredictionsTab />}
+        {activeTab === 'predictions' && (
+          <>
+            <RecommendationBox />
+            <PredictionsTab />
+          </>
+        )}
         {activeTab === 'news' && <NewsTab />}
         {activeTab === 'algorithm' && <AlgorithmTab />}
+        {activeTab === 'model' && <ModelInsightsTab />}
         {activeTab === 'weights' && <WeightsTab />}
         {activeTab === 'status' && <ApiStatusTab />}
       </main>

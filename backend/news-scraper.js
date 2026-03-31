@@ -4,9 +4,14 @@ const NaturalLanguageProcessing = require('natural');
 const redditScraper = require('./reddit-scraper');
 
 const NEWSAPI_BASE = 'https://newsapi.org/v2';
+const MARKETAUX_BASE = 'https://api.marketaux.com/v1/news/all';
 
 function getNewsApiKey() {
   return process.env.NEWS_API_KEY;
+}
+
+function getMarketauxApiKey() {
+  return process.env.MARKETAUX_API_KEY;
 }
 
 // Simple sentiment analysis
@@ -25,22 +30,111 @@ function analyzeSentiment(text) {
   return 'neutral';
 }
 
-async function scrapeNewsForTicker(ticker) {
-  try {
-    const response = await axios.get(`${NEWSAPI_BASE}/everything`, {
-      params: {
-        q: ticker,
-        sortBy: 'publishedAt',
-        language: 'en',
-        pageSize: 20,
-        apiKey: getNewsApiKey()
-      }
-    });
+function normalizePublishedAt(value) {
+  const parsed = new Date(value).getTime();
+  if (!Number.isFinite(parsed)) {
+    return Math.floor(Date.now() / 1000);
+  }
+  return Math.floor(parsed / 1000);
+}
 
-    const articles = response.data.articles || [];
+async function scrapeNewsForTicker(ticker) {
+  const normalizedTicker = String(ticker || '').toUpperCase();
+
+  const fetchNewsApiArticles = async () => {
+    const newsApiKey = getNewsApiKey();
+    if (!newsApiKey) {
+      return [];
+    }
+
+    try {
+      const response = await axios.get(`${NEWSAPI_BASE}/everything`, {
+        params: {
+          q: normalizedTicker,
+          sortBy: 'publishedAt',
+          language: 'en',
+          pageSize: 20,
+          apiKey: newsApiKey
+        },
+        timeout: 12000
+      });
+
+      return (response.data.articles || []).map((article) => ({
+        title: article.title,
+        description: article.description,
+        content: article.content,
+        source: article.source?.name || 'newsapi',
+        url: article.url,
+        publishedAt: article.publishedAt
+      }));
+    } catch (error) {
+      console.error(`Error fetching NewsAPI articles for ${normalizedTicker}:`, error.message);
+      return [];
+    }
+  };
+
+  const fetchMarketauxArticles = async () => {
+    const marketauxKey = getMarketauxApiKey();
+    if (!marketauxKey) {
+      return [];
+    }
+
+    try {
+      const response = await axios.get(MARKETAUX_BASE, {
+        params: {
+          symbols: normalizedTicker,
+          language: 'en',
+          limit: 20,
+          filter_entities: true,
+          api_token: marketauxKey
+        },
+        timeout: 12000
+      });
+
+      return (response.data?.data || []).map((article) => {
+        const sourceName = article.source || article.domain || 'marketaux';
+        const snippets = [
+          article.title,
+          article.description,
+          article.snippet
+        ].filter(Boolean).join(' ');
+
+        return {
+          title: article.title,
+          description: article.description || article.snippet || null,
+          content: snippets || null,
+          source: sourceName,
+          url: article.url,
+          publishedAt: article.published_at || article.publishedAt
+        };
+      });
+    } catch (error) {
+      console.error(`Error fetching Marketaux articles for ${normalizedTicker}:`, error.message);
+      return [];
+    }
+  };
+
+  try {
+    const [newsApiArticles, marketauxArticles] = await Promise.all([
+      fetchNewsApiArticles(),
+      fetchMarketauxArticles()
+    ]);
+    const mergedArticles = [...newsApiArticles, ...marketauxArticles]
+      .filter((article) => article && article.url && article.title);
+    const uniqueArticles = [];
+    const seenUrls = new Set();
+    for (const article of mergedArticles) {
+      const url = String(article.url);
+      if (seenUrls.has(url)) {
+        continue;
+      }
+      seenUrls.add(url);
+      uniqueArticles.push(article);
+    }
+
     const savedArticles = [];
 
-    for (const article of articles) {
+    for (const article of uniqueArticles) {
       const sentiment = analyzeSentiment(
         `${article.title} ${article.description} ${article.content}`
       );
@@ -51,13 +145,13 @@ async function scrapeNewsForTicker(ticker) {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(url) DO UPDATE SET scraped_at = strftime('%s', 'now')`,
           [
-            ticker,
+            normalizedTicker,
             article.title,
             article.description,
             article.content,
-            article.source.name,
+            article.source,
             article.url,
-            Math.floor(new Date(article.publishedAt).getTime() / 1000),
+            normalizePublishedAt(article.publishedAt),
             sentiment
           ]
         );
@@ -65,7 +159,7 @@ async function scrapeNewsForTicker(ticker) {
         savedArticles.push({
           id: result.id,
           title: article.title,
-          source: article.source.name,
+          source: article.source,
           sentiment,
           url: article.url
         });
@@ -75,15 +169,15 @@ async function scrapeNewsForTicker(ticker) {
     }
 
     return {
-      ticker,
-      articlesFound: articles.length,
+      ticker: normalizedTicker,
+      articlesFound: uniqueArticles.length,
       articlesSaved: savedArticles.length,
       articles: savedArticles
     };
   } catch (error) {
-    console.error(`Error scraping news for ${ticker}:`, error.message);
+    console.error(`Error scraping news for ${normalizedTicker}:`, error.message);
     return {
-      ticker,
+      ticker: normalizedTicker,
       error: error.message,
       articlesFound: 0,
       articlesSaved: 0,

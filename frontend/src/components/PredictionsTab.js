@@ -13,6 +13,7 @@ export function PredictionsTab() {
   const [loading, setLoading] = useState(false);
   const [accuracy, setAccuracy] = useState({});
   const [error, setError] = useState(null);
+  const [warnings, setWarnings] = useState([]);
   const [suggestedStocks, setSuggestedStocks] = useState(['NVDA', 'META', 'NFLX']); // Will be updated from scraping
 
   // Persist tickers to localStorage whenever they change
@@ -80,6 +81,7 @@ export function PredictionsTab() {
     try {
       setLoading(true);
       setError(null);
+      setWarnings([]);
       console.log('Generating predictions for:', tickers);
       const result = await apiClient.generatePredictions(tickers);
       console.log('Prediction result:', result);
@@ -88,6 +90,7 @@ export function PredictionsTab() {
       } else if (result.error) {
         setError(result.error);
       } else {
+        setWarnings(result.skipped || []);
         await fetchPredictions();
       }
     } catch (error) {
@@ -119,10 +122,24 @@ export function PredictionsTab() {
   return (
     <div className="predictions-tab">
       <h2>Stock Predictions</h2>
+      <p className="predictions-explainer">
+        The threshold is the highest close the model expects the stock not to finish below on the expiration date. Any close at or above that threshold counts as a win.
+      </p>
       
       {error && (
         <div className="error-message">
           ⚠️ {error}
+        </div>
+      )}
+
+      {warnings.length > 0 && (
+        <div className="warning-message">
+          <strong>Some tickers were skipped:</strong>
+          {warnings.map((warning) => (
+            <div key={warning.ticker}>
+              {warning.ticker}: {warning.reason}
+            </div>
+          ))}
         </div>
       )}
       
@@ -199,6 +216,15 @@ export function PredictionsTab() {
                 const confidenceScores = safeParse(prediction.confidence_scores);
                 const tickerAccuracy = accuracy[prediction.ticker];
                 const accuracyRate = tickerAccuracy ? tickerAccuracy.accuracyRate : 'N/A';
+                const resolvedChecks = tickerAccuracy?.resolvedChecks ?? tickerAccuracy?.totalChecks ?? 0;
+                const unresolvedChecks = tickerAccuracy?.unresolvedChecks ?? 0;
+                const dataQuality = prediction.signal_context?.dataQuality || {};
+                const qualityStatus = dataQuality.status || 'normal';
+                const qualityLabel = qualityStatus === 'downgrade'
+                  ? 'Downgraded'
+                  : qualityStatus === 'exclude'
+                    ? 'Excluded'
+                    : 'Normal';
 
                 // Validate data exists
                 if (!targetDates || !predictedPrices || !confidenceScores) {
@@ -220,15 +246,15 @@ export function PredictionsTab() {
                     return (
                       <div className="price-range-container">
                         <div className="price-range-item low">
-                          <span className="label">Low</span>
+                          <span className="label">Threshold</span>
                           <span className="price">${Number(priceRange.low || 0).toFixed(2)}</span>
                         </div>
                         <div className="price-range-item mid">
-                          <span className="label">Mid</span>
+                          <span className="label">Expected</span>
                           <span className="price">${Number(priceRange.mid || 0).toFixed(2)}</span>
                         </div>
                         <div className="price-range-item high">
-                          <span className="label">High</span>
+                          <span className="label">Ceiling</span>
                           <span className="price">${Number(priceRange.high || 0).toFixed(2)}</span>
                           <span className="confidence-badge">
                             {typeof priceRange.confidence === 'number'
@@ -261,7 +287,10 @@ export function PredictionsTab() {
                     <div className="card-header">
                       <h3>{prediction.ticker}</h3>
                       <span className="accuracy-badge">
-                        Accuracy: {accuracyRate}%
+                        Threshold Hit Rate: {accuracyRate}%
+                      </span>
+                      <span className={`quality-badge ${qualityStatus}`}>
+                        {qualityLabel}
                       </span>
                     </div>
 
@@ -284,6 +313,20 @@ export function PredictionsTab() {
                     </div>
 
                     <div className="prediction-footer">
+                      <small>Model: {prediction.model_name || 'Unknown'}</small>
+                      <br />
+                      <small>Data Quality Score: {typeof dataQuality.score === 'number' ? `${dataQuality.score}/100` : 'N/A'}</small>
+                      <br />
+                      <small>Resolved Checks: {resolvedChecks} | Unresolved Checks: {unresolvedChecks}</small>
+                      {Array.isArray(dataQuality.reasons) && dataQuality.reasons.length > 0 && (
+                        <>
+                          <br />
+                          <small>Notes: {dataQuality.reasons.join(', ')}</small>
+                        </>
+                      )}
+                      <br />
+                      <small>Anything above the threshold is a win on the target date.</small>
+                      <br />
                       <small>Generated: {new Date(prediction.created_at * 1000).toLocaleDateString()}</small>
                     </div>
                   </div>

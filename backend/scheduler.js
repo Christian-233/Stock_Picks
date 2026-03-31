@@ -56,6 +56,44 @@ function initializeScheduler() {
     console.error('Initial news scrape failed:', err);
   });
 
+  const selfTrainEnabled = process.env.SELF_TRAIN_ENABLED !== 'false';
+  if (selfTrainEnabled) {
+    const selfTrainCron = process.env.SELF_TRAIN_CRON || '15 2 * * *';
+    const nightlySelfTrainJob = schedule.scheduleJob(selfTrainCron, async () => {
+      try {
+        console.log('Running scheduled self-training cycle...');
+        const result = await aiPredictor.runSelfTrainingCycle({
+          refreshBackfilled: true
+        });
+        if (result.skipped) {
+          console.log(`Scheduled self-training skipped: ${result.reason}`);
+        } else {
+          console.log(`Scheduled self-training completed in ${result.durationMs}ms`);
+        }
+      } catch (error) {
+        console.error('Scheduled self-training failed:', error.message || error);
+      }
+    });
+    scheduledJobs.push(nightlySelfTrainJob);
+    console.log(`Nightly self-training scheduled: ${selfTrainCron}`);
+
+    if (process.env.SELF_TRAIN_ON_STARTUP === 'true') {
+      aiPredictor.runSelfTrainingCycle({
+        refreshBackfilled: true
+      }).then((result) => {
+        if (result.skipped) {
+          console.log(`Startup self-training skipped: ${result.reason}`);
+        } else {
+          console.log(`Startup self-training completed in ${result.durationMs}ms`);
+        }
+      }).catch((error) => {
+        console.error('Startup self-training failed:', error.message || error);
+      });
+    }
+  } else {
+    console.log('Self-training scheduler disabled via SELF_TRAIN_ENABLED=false');
+  }
+
   console.log(`Scheduler initialized with ${scheduledJobs.length} jobs`);
 }
 

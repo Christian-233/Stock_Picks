@@ -138,6 +138,76 @@ body {
   padding: 0 20px;
 }
 
+.recommendation-box {
+  margin-top: 20px;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border: 1px solid #cfe3ff;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f3f8ff 0%, #ffffff 100%);
+  box-shadow: 0 2px 8px rgba(0, 75, 173, 0.08);
+}
+
+.recommendation-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.recommendation-box-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #0b326e;
+}
+
+.recommendation-threshold {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0048b4;
+  background: #e5f0ff;
+  border: 1px solid #bed7ff;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.recommendation-empty {
+  font-size: 14px;
+  color: #4a5f81;
+}
+
+.recommendation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.recommendation-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #dbe9ff;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.recommendation-ticker {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0b326e;
+  letter-spacing: 0.2px;
+}
+
+.recommendation-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+  color: #38517a;
+}
+
 .app-footer {
   background: #2c3e50;
   color: white;
@@ -173,5 +243,10 @@ body {
 
   .app-main {
     padding: 0 10px;
+  }
+
+  .recommendation-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
